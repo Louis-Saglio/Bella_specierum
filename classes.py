@@ -8,6 +8,9 @@ se reproduire
 attaquer
 mourrir
 se déplacer
+
+Supprimer Espece, porter deux genes
+
 """
 from random import randint, choice
 from copy import deepcopy
@@ -23,10 +26,24 @@ def pause(temps):
 
 
 def give_name():
-    rep = ''
-    nbr = randint(4, 8)
+    nbr = randint(3, 8)
     consonnes = "zrtypqsdfghjklmwxcvbn"
     voyelles = "aeyuio"
+    rep = choice(consonnes) if randint(0, 1) == 0 else choice(voyelles)
+    # noinspection PyShadowingNames
+    for i in range(nbr):
+        rep += choice(consonnes) if i % 2 == 0 else choice(voyelles)
+    return rep.title()
+
+
+def donne_nom(maxi=8, rand=False, mini=3):
+    if rand:
+        nbr = randint(mini, maxi)
+    else:
+        nbr = maxi -1
+    consonnes = "zrtypqsdfghjklmwxcvbn"
+    voyelles = "aeyuio"
+    rep = choice(consonnes) if randint(0, 1) == 0 else choice(voyelles)
     # noinspection PyShadowingNames
     for i in range(nbr):
         rep += choice(consonnes) if i % 2 == 0 else choice(voyelles)
@@ -40,68 +57,81 @@ def moyenne(data, approximation=3):
 class Espece:
 
     liste_scp = []
-    tailles_possibles = [1, 2, 3]
-    intelligences_possibles = [1, 2, 3]
-    agilites_possibles = [1, 2, 3]
-    fecondites_possibles = [1, 2, 3]
 
     def __init__(self, nom):
         Espece.liste_scp.append(self)
         self.nom = nom
-        self.tailles = (choice(Espece.tailles_possibles), choice(Espece.tailles_possibles))
-        self.intelligences = (choice(Espece.intelligences_possibles), choice(Espece.intelligences_possibles))
-        self.agilites = (choice(Espece.agilites_possibles), choice(Espece.agilites_possibles))
-        self.fecondite = (choice(Espece.fecondites_possibles), choice(Espece.fecondites_possibles))
+        self.genes = {}
+        for i in range(randint(2, 7)):
+            self.genes[donne_nom(4)] = [choice((1, 2, 3)), choice((1, 2, 3))]
 
-    def create(self):
-        """
-        :return: Une instance d'individue de l'espece self
-        """
-        taille = self.tailles[0 if randint(0, 4) <= 3 else 1]
-        intelligence = self.intelligences[0 if randint(0, 4) <= 3 else 1]
-        agilite = self.agilites[0 if randint(0, 4) <= 3 else 1]
-        fecondite = self.fecondite[0 if randint(0, 4) <= 3 else 1]
-        return Individu(self, taille, intelligence, agilite, fecondite)
+    def __str__(self):
+        rep = ''
+        for key, val in self.__dict__.items():
+            rep += f"{key.ljust(15, ' ')}\t:\t{val}\n"
+        return rep
 
 
 class Individu:
 
-    def __init__(self, espece, taille, intelligence, agilite, fecondite):
+    def __init__(self, genes: dict, espece: Espece):
         # self.nom = str([choice(list("azertyuiopqsdfghjklmwxcvbn")) for i in range(randint(5, 8))]).title()
-        self.nom = give_name()
+        self.sexe = "Mâle" if randint(0, 1) == 0 else "Femelle"
+        self.nom = give_name().title()
+        self.genes = genes
         self.espece = espece
         self.population = None
-        self.taille = taille
-        self.intelligence = intelligence
-        self.agilite = agilite
-        self.fecondite = fecondite
+
+    def seduire(self, other):
+        """
+         :type other Individu
+        """
+        return True
 
     def __add__(self, other):
         """
-        :param other: Un Individu
+        :param other: Individu
+        :type other: Individu
         :return: Un individu héritant des gênes de ses parents ou None
         """
-        espece = self.espece if randint(0, 1) == 0 else other.espece
-        taille = self.taille if randint(0, 1) == 0 else other.taille
-        intelligence = self.intelligence if randint(0, 1) == 0 else other.intelligence
-        agilite = self.agilite if randint(0, 1) == 0 else other.agilite
-        fecondite = self.fecondite if randint(0, 1) == 0 else other.fecondite
-        if self.fecondite + other.fecondite > 2:
-            return Individu(espece, taille, intelligence, agilite, fecondite)
+        if self.seduire(other) and self.espece.nom == other.espece.nom:
+            pere, mere = self.genes, other.genes
+            bebe = {}
+            for key in pere:
+                p_index = randint(0, len(pere[key]) - 1)
+                m_index = randint(0, len(mere[key]) - 1)
+                if key in mere:
+                    bebe[key] = [pere[key][p_index], mere[key][m_index]]
+                else:
+                    if randint(0, 1) == 0:
+                        bebe[key] = pere[key][p_index]
+            for key in mere:
+                p_index = randint(0, len(pere[key]) - 1)
+                m_index = randint(0, len(mere[key]) - 1)
+                if key in pere:
+                    bebe[key] = [pere[key][p_index], mere[key][m_index]]
+                else:
+                    if randint(0, 1) == 0:
+                        bebe[key] = pere[key][p_index]
+            return Individu(bebe, self.espece)
         else:
             return None
 
     def attaquer(self, other):
-        s = (self.taille + self.agilite + self.intelligence)
-        o = (other.taille + other.agilite + other.intelligence)
+        s = 0
+        for i in self.genes.values():
+            s += mean(i)
+        o = 0
+        for i in self.genes.values():
+            o += mean(i)
         if s > o:
             other.mourrir()
         elif o > s:
-            self.mourrir()
+            self.mourir()
 
     def __str__(self):
         rep = ''
-        for attribut, valeur in self.__dict__.items():
+        for attribut, valeur in self.genes.items():
             attr = f"{attribut}".ljust(15, ' ')
             if attribut == "espece":
                 val = f"{valeur.nom}".ljust(15, ' ')
@@ -111,7 +141,7 @@ class Individu:
                 rep += f"{attr}\t:\t{val}\n"
         return rep + '\n'
 
-    def mourrir(self):
+    def mourir(self):
         if self.population is not None:
             self.population.remove(self)
         del self
@@ -138,7 +168,10 @@ class Population(list):
             if len(self) > 0 and len(ennemis) > 0:
                 choice(self).attaquer(choice(ennemis))
         if verbose:
-            print(f"Les {self.nom} ont subi ")
+            nbr_morts_self = nbr_combattants[0] - len(self)
+            nbr_morts_ennemis = nbr_combattants[1] - len(ennemis)
+            for pop in [self, ennemis]:
+                print(f"Les {pop.nom} ont subi {nbr_morts_self if pop == self else nbr_morts_ennemis} mort(s)")
 
     def append(self, obj: Individu):
         super().append(obj)
@@ -157,21 +190,8 @@ class Population(list):
             self.liste_especes.remove(obj.espece.nom)
 
     def bilan(self):
-        nbr = len(self)
-        if len(self) == 0:
-            indivs, taille, agilite, intelligence, fecondite, total = None, None, None, None, None, None
-        else:
-            indivs = [i.nom + ', ' for i in self]
-            taille = moyenne([i.taille for i in self])
-            agilite = moyenne([i.agilite for i in self])
-            intelligence = moyenne([i.intelligence for i in self])
-            total = moyenne((taille, agilite, intelligence))
-            fecondite = moyenne([i.fecondite for i in self])
         rep = ''
-        for e in self.liste_especes:
-            rep += f"\t{e.title()} : {len([i for i in self if i.espece.nom == e])}\n"
-        return f"{self.nom}\n{indivs}\nNombre total : {nbr}\nEspeces :\n{rep}Taille : {taille}\n" \
-               f"Intelligence : {intelligence}\nAgilité : {agilite}\nMoyenne : {total}\nFécondité : {fecondite}"
+        return rep
 
     def __str__(self, verbose=False):
         rep = self.bilan() + '\n\n'
@@ -187,14 +207,18 @@ def tester():
     h = Population()
     e = Population()
     print("populations créées")
-    for i in range(10):
-        h.append(homme.create())
-        e.append(elfe.create())
+    for i in range(2):
+        h.append(Individu(homme.genes, homme))
+        e.append(Individu(elfe.genes, elfe))
     print("populations peuplées")
-    h.reproduire()
-    e.reproduire()
+    for i in range(2):
+        h.reproduire()
+        e.reproduire()
 
-    h.attaquer(e)
+        h.attaquer(e)
+
+    print(h.__str__(True))
+    print(e)
 
     print(len(h))
     print(len(e))
@@ -217,12 +241,36 @@ def observer():
     pop_elfes.reproduire()
     print(pop_elfes)
 
-    pop_elfes.attaquer(population)
+    pop_elfes.attaquer(population, True)
 
-    print(population)
+    print("\n\n" + str(population))
     print(pop_elfes)
 
 
+def observer2():
+    espece_humaine = Espece("Hommes")
+    population = Population()
+    population.auto_peupler(espece_humaine, 4)
+    print(population)
+    deb = time()
+    for i in range(100):
+        population.reproduire()
+        if time() - deb > 15:
+            break
+    print(population)
+
+
+def test_new():
+    e = Espece("hommes")
+    print(e)
+    a = Individu(e.genes, e)
+    print(a)
+    b = Individu(e.genes, e)
+    print(b)
+    print(a + b)
+
+
 if __name__ == '__main__':
-    # tester()
-    observer()
+    tester()
+    # observer2()
+    # test_new()

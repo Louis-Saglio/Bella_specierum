@@ -1,10 +1,35 @@
 import time
 import timeit
-from random import randint
+from random import randint, choice
 from pprint import pprint
+from statistics import mean
 
 
-def pause():
+def pause(temps):
+    debut = time()
+    while time() - debut < temps:
+        pass
+
+
+def give_name(maxi=8, rand=False, mini=3):
+    if rand:
+        nbr = randint(mini, maxi)
+    else:
+        nbr = maxi -1
+    consonnes = "zrtypqsdfghjklmwxcvbn"
+    voyelles = "aeyuio"
+    rep = choice(consonnes) if randint(0, 1) == 0 else choice(voyelles)
+    # noinspection PyShadowingNames
+    for i in range(nbr):
+        rep += choice(consonnes) if i % 2 == 0 else choice(voyelles)
+    return rep.title()
+
+
+def moyenne(data, approximation=3):
+    return round(mean(data), approximation)
+
+
+def pause2():
     debut = time.time()
 
     while time.time() == debut:
@@ -27,8 +52,12 @@ def rand(chaine):
 
 
 def aleatoire():
-    pause()
+    pause2()
     return rand(str(time.time()))
+
+
+def hasard(mini, maxi):
+    return (int(aleatoire()) / 10) * (maxi - mini) + mini
 
 
 def stat(nbr=1000, verbose=False):
@@ -80,4 +109,4 @@ def run_stat(mode="stat", nbr=1000):
 
 
 if __name__ == '__main__':
-    run_stat("stat -v", 10)
+    run_stat("stat -v", 100)
