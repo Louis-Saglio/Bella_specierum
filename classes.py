@@ -64,6 +64,9 @@ class Espece:
         self.genes = {}
         for i in range(randint(2, 7)):
             self.genes[donne_nom(4)] = [choice((1, 2, 3)), choice((1, 2, 3))]
+        self.dominants = {}
+        for key, val in self.genes.items():
+            self.dominants[key] = choice(val)
 
     def __str__(self):
         rep = ''
@@ -81,6 +84,9 @@ class Individu:
         self.genes = genes
         self.espece = espece
         self.population = None
+        self.apparents = {}
+        for key, val in self.genes.items():
+            self.apparents[key] = self.espece.dominants[key] if self.espece.dominants[key] in val else choice(val)
 
     def seduire(self, other):
         """
@@ -133,12 +139,11 @@ class Individu:
         rep = ''
         for attribut, valeur in self.genes.items():
             attr = f"{attribut}".ljust(15, ' ')
-            if attribut == "espece":
+            if attribut == "espece" or attribut == "population":
                 val = f"{valeur.nom}".ljust(15, ' ')
             elif attribut != "population":
                 val = f"{valeur}".ljust(15, ' ')
-            if attribut != "population":
-                rep += f"{attr}\t:\t{val}\n"
+            rep += f"{attr}\t:\t{val}\n"
         return rep + '\n'
 
     def mourir(self):
@@ -179,10 +184,11 @@ class Population(list):
         if obj.espece.nom not in self.liste_especes:
             self.liste_especes.append(obj.espece.nom)
 
-    def auto_peupler(self, espece, nbr):
+    def auto_peupler(self, especes: tuple, nbr: int):
         # noinspection PyShadowingNames
         for i in range(nbr):
-            self.append(espece.create())
+            espece = choice(especes)
+            self.append(Individu(espece.genes, espece))
 
     def remove(self, obj) -> None:
         super().remove(obj)
@@ -190,15 +196,21 @@ class Population(list):
             self.liste_especes.remove(obj.espece.nom)
 
     def bilan(self):
-        rep = ''
+        noms = [i.nom for i in self]
+        scp = [i.espece.nom for i in self]
+        esp = {}
+        for e in self.liste_especes:
+            esp[e] = str(scp.count(e)) + " soit " + str(round((scp.count(e) * 100) / len(self), 1)) + '%'
+        rep = f"Nom\t\t\t:\t{self.nom}\nTaille\t\t:\t{len(self)}\nIndividus\t:\t{noms}" \
+              f"\nEspèces\t\t:\t{esp}"
         return rep
 
     def __str__(self, verbose=False):
-        rep = self.bilan() + '\n\n'
+        rep = self.bilan()
         if verbose:
             for indiv in self:
                 rep += indiv.__str__()
-        return rep
+        return rep + '\n'
 
 
 def tester():
@@ -218,10 +230,7 @@ def tester():
         h.attaquer(e)
 
     print(h.__str__(True))
-    print(e)
-
-    print(len(h))
-    print(len(e))
+    print(e.__str__(True))
 
 
 def observer():
@@ -243,7 +252,7 @@ def observer():
 
     pop_elfes.attaquer(population, True)
 
-    print("\n\n" + str(population))
+    print(population)
     print(pop_elfes)
 
 
@@ -262,15 +271,22 @@ def observer2():
 
 def test_new():
     e = Espece("hommes")
+    e1 = Espece("elfes")
     print(e)
-    a = Individu(e.genes, e)
-    print(a)
-    b = Individu(e.genes, e)
-    print(b)
-    print(a + b)
+    print(e1)
+    p = Population()
+    p.auto_peupler((e, e1), 5)
+    print(p)
+    for _ in range(10):
+        p.reproduire()
+    print(p)
 
 
 if __name__ == '__main__':
-    tester()
+    # tester()
+    # print("################")
+    # observer()
+    # print("################")
     # observer2()
-    # test_new()
+    # print("################")
+    test_new()
