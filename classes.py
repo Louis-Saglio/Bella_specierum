@@ -16,7 +16,7 @@ from random import randint, choice
 from copy import deepcopy
 from statistics import mean
 from time import time
-from module import aleatoire
+# from module import aleatoire
 
 
 def pause(temps):
@@ -40,7 +40,7 @@ def donne_nom(maxi=8, rand=False, mini=3):
     if rand:
         nbr = randint(mini, maxi)
     else:
-        nbr = maxi -1
+        nbr = maxi - 1
     consonnes = "zrtypqsdfghjklmwxcvbn"
     voyelles = "aeyuio"
     rep = choice(consonnes) if randint(0, 1) == 0 else choice(voyelles)
@@ -63,10 +63,12 @@ class Espece:
         self.nom = nom
         self.genes = {}
         for i in range(randint(2, 7)):
-            self.genes[donne_nom(4)] = [choice((1, 2, 3)), choice((1, 2, 3))]
+            self.genes[donne_nom(4)] = [choice(range(1, 20)), choice(range(1, 20))]
         self.dominants = {}
         for key, val in self.genes.items():
             self.dominants[key] = choice(val)
+        self.genes["sexe"] = None
+        self.dominants["sexe"] = "Y"
 
     def __str__(self):
         rep = ''
@@ -78,21 +80,28 @@ class Espece:
 class Individu:
 
     def __init__(self, genes: dict, espece: Espece):
-        # self.nom = str([choice(list("azertyuiopqsdfghjklmwxcvbn")) for i in range(randint(5, 8))]).title()
-        self.sexe = "Mâle" if randint(0, 1) == 0 else "Femelle"
         self.nom = give_name().title()
         self.genes = genes
+        if genes["sexe"] is None:
+            genes["sexe"] = ['X', 'X'] if randint(0, 1) == 0 else ["X", "Y"]
         self.espece = espece
-        self.population = None
-        self.apparents = {}
+        self.apparents = self.synchronise_genes()
+        self.population = Population()
+        self.population.nom = "Aucune"
+        self.moyenne = mean([g for g in self.apparents.values() if (isinstance(g, int) or isinstance(g, float))])
+
+    def synchronise_genes(self):
+        apparents = {}
         for key, val in self.genes.items():
-            self.apparents[key] = self.espece.dominants[key] if self.espece.dominants[key] in val else choice(val)
+            apparents[key] = self.espece.dominants[key] if self.espece.dominants[key] in val else choice(val)
+        return apparents
 
     def seduire(self, other):
         """
          :type other Individu
         """
-        return True
+        if self.moyenne - randint(-2, +2) >= other.moyenne and self.apparents["sexe"] != other.apparents["sexe"]:
+            return True
 
     def __add__(self, other):
         """
@@ -124,27 +133,28 @@ class Individu:
             return None
 
     def attaquer(self, other):
-        s = 0
-        for i in self.genes.values():
-            s += mean(i)
-        o = 0
-        for i in self.genes.values():
-            o += mean(i)
+        s, o = self.moyenne, other.moyenne
         if s > o:
-            other.mourrir()
+            other.mourir()
         elif o > s:
             self.mourir()
+        if s == o:
+            choice((self, other)).mourir()
+
+    def set_sexe(self, new: list):
+        self.genes["sexe"] = new
+        self.synchronise_genes()
 
     def __str__(self):
-        rep = ''
+        rep = f"Nom\t\t\t\t:\t{self.nom}\nEspece\t\t\t:\t{self.espece.nom}\nPopulation\t\t:\t{self.population.nom}\n"
         for attribut, valeur in self.genes.items():
             attr = f"{attribut}".ljust(15, ' ')
             if attribut == "espece" or attribut == "population":
                 val = f"{valeur.nom}".ljust(15, ' ')
             elif attribut != "population":
                 val = f"{valeur}".ljust(15, ' ')
-            rep += f"{attr}\t:\t{val}\n"
-        return rep + '\n'
+            rep += f"{attr}\t:\t{val}\t\t{self.apparents[attribut]}\n"
+        return rep + '\n\n'
 
     def mourir(self):
         if self.population is not None:
@@ -201,9 +211,14 @@ class Population(list):
         esp = {}
         for e in self.liste_especes:
             esp[e] = str(scp.count(e)) + " soit " + str(round((scp.count(e) * 100) / len(self), 1)) + '%'
+        sexes = {"Y": len([i.apparents["sexe"] for i in self if i.apparents["sexe"] == "Y"])}
+        sexes["X"] = len(self) - sexes["Y"]
+        sexes["X"] = str(sexes["X"]) + " soit " + str(100 - int(sexes["Y"])) + '%'
+        sexes["Y"] = str(sexes["Y"]) + " soit " + str(round((sexes["Y"] * 100 / len(self)), 2)) + '%'
+
         rep = f"Nom\t\t\t:\t{self.nom}\nTaille\t\t:\t{len(self)}\nIndividus\t:\t{noms}" \
-              f"\nEspèces\t\t:\t{esp}"
-        return rep
+              f"\nEspèces\t\t:\t{esp}\nSexes\t\t:\t{sexes}"
+        return rep + '\n\n'
 
     def __str__(self, verbose=False):
         rep = self.bilan()
@@ -214,79 +229,41 @@ class Population(list):
 
 
 def tester():
-    homme = Espece("homme")
-    elfe = Espece("elfe")
-    h = Population()
-    e = Population()
-    print("populations créées")
-    for i in range(2):
-        h.append(Individu(homme.genes, homme))
-        e.append(Individu(elfe.genes, elfe))
-    print("populations peuplées")
-    for i in range(2):
-        h.reproduire()
-        e.reproduire()
-
-        h.attaquer(e)
-
-    print(h.__str__(True))
-    print(e.__str__(True))
-
-
-def observer():
-    espece_humaine = Espece("Hommes")
-    population = Population()
-    population.auto_peupler((espece_humaine,), 4)
-    print(population)
-
-    population.reproduire()
-    print(population)
-
-    espece_elfe = Espece("Elfes")
-    pop_elfes = Population()
-    pop_elfes.auto_peupler((espece_elfe,), 6)
-    print(pop_elfes)
-
-    pop_elfes.reproduire()
-    print(pop_elfes)
-
-    pop_elfes.attaquer(population, True)
-
-    print(population)
-    print(pop_elfes)
-
-
-def observer2():
-    espece_humaine = Espece("Hommes")
-    population = Population()
-    population.auto_peupler((espece_humaine,), 4)
-    print(population)
-    deb = time()
-    for i in range(100):
-        population.reproduire()
-        if time() - deb > 15:
-            break
-    print(population)
+    e1 = Espece('abeille')
+    p1 = Population()
+    i1 = Individu(e1.genes, e1)
+    i2 = Individu(e1.genes, e1)
+    p1.append(i1)
+    p1.append(i2)
+    # i1.set_sexe(['X', 'Y'])
+    # i2.set_sexe(['X', 'X'])
+    i3 = i1 + i2
+    if i3 is not None:
+        p1.append(i3)
+    print(p1.__str__(True))
 
 
 def test_new():
     e = Espece("hommes")
     e1 = Espece("elfes")
-    print(e)
-    print(e1)
     p = Population()
-    p.auto_peupler((e, e1), 5)
+    p.auto_peupler((e, e1), 100)
     print(p)
-    for _ in range(10):
+    p1 = Population()
+    p1.auto_peupler((e, e1), 100)
+    print(p1)
+    for _ in range(100):
         p.reproduire()
-    print(p)
+        p1.reproduire()
+        if _ % 100 == 0:
+            p.attaquer(p1, True)
+            p1.attaquer(p, True)
+        if len(p) * len(p1) == 0:
+            break
+    print("\n" + p.__str__(True))
+    print(p1.__str__(True))
 
 
 if __name__ == '__main__':
-    # tester()
-    # print("################")
-    # observer()
-    # print("################")
-    # observer2()
-    # print("################")
     test_new()
+    # tester()
