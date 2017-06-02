@@ -236,7 +236,7 @@ def tester():
 def observer():
     espece_humaine = Espece("Hommes")
     population = Population()
-    population.auto_peupler(espece_humaine, 4)
+    population.auto_peupler((espece_humaine,), 4)
     print(population)
 
     population.reproduire()
@@ -244,7 +244,7 @@ def observer():
 
     espece_elfe = Espece("Elfes")
     pop_elfes = Population()
-    pop_elfes.auto_peupler(espece_elfe, 6)
+    pop_elfes.auto_peupler((espece_elfe,), 6)
     print(pop_elfes)
 
     pop_elfes.reproduire()
@@ -259,7 +259,7 @@ def observer():
 def observer2():
     espece_humaine = Espece("Hommes")
     population = Population()
-    population.auto_peupler(espece_humaine, 4)
+    population.auto_peupler((espece_humaine,), 4)
     print(population)
     deb = time()
     for i in range(100):
