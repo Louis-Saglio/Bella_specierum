@@ -1,16 +1,18 @@
 """
-Taille : grand, moyen, petit
-Intelligence : faible, moyen, fort
-Couleur : blanc, noir, jaune
-Force : 1, 2, 3
-Agilité : 1, 2, 3
-se reproduire
-attaquer
-mourrir
-se déplacer
-
-Supprimer Espece, porter deux genes
-
+Implémenter :
+    Position de l'Individu (2d ou 3d) qui influe sur le partenaire de reproduction et l'ennemi à attaquer
+    Un support optionnel du temps modifiant la probabilité de reproduction et les chances de survies
+    Un gestionnaire de mutatuion aléatoire
+Améliorer l'API avec :
+    Une méthode d'espèce créant un indivinu original de l'espece en question
+    Un moteur sommaire prenant en compte le temps
+    Améliorer le générateur de nom (implémenter une classe) pour éviter les doublons et permettre des famille de nom
+    Des exceptions personnalisées
+Clarifier le code :
+    Rédigeant la documentation
+    Divisant en plus de fonction (tant pis pour l'optimisation)
+    Commentant
+    Remplaçant les tab par des lpad()
 """
 from random import randint, choice
 from copy import deepcopy
@@ -56,19 +58,57 @@ def moyenne(data, approximation=3):
 
 class Espece:
 
-    liste_scp = []
+    liste_especes = []
 
-    def __init__(self, nom):
-        Espece.liste_scp.append(self)
-        self.nom = nom
-        self.genes = {}
-        for i in range(randint(2, 7)):
-            self.genes[donne_nom(4)] = [choice(range(1, 20)), choice(range(1, 20))]
-        self.dominants = {}
+    def __init__(self, nom=None, genes=None, sexe=True):
+
+        Espece.liste_especes.append(self)
+
+        self.nom = nom if nom is not None else give_name()
+
+        if genes is None:
+            self._genes = self.generate_genes()
+        elif isinstance(genes, dict):
+            self._genes = genes
+        else:
+            raise TypeError
+
+        self.find_dominants()
+
+        # New feature : Rendre le sexe facultatif
+        if not isinstance(sexe, bool):
+            raise TypeError
+        if sexe is False:
+            print("Pour l'instant les espèces sont forcément sexués.")
+            raise NotImplemented
+        else:
+            self.genes["sexe"] = None
+            self.dominants["sexe"] = "Y"
+
+    @property
+    def genes(self):
+        # noinspection PyAttributeOutsideInit
+        # self._genes_old sert à savoir si self.gene a été modifié. Ex: self.genes['bidule'] = 'toto'
+        self._genes_old = self._genes
+        return self._genes
+
+    @property
+    def dominants(self):
+        # Attention à genes["existant"] = "toto"
+        if self._genes != self._genes_old:
+            self.find_dominants()
+        return self._dominants
+
+    def find_dominants(self):
+        # noinspection PyAttributeOutsideInit
+        self._dominants = {}
         for key, val in self.genes.items():
-            self.dominants[key] = choice(val)
-        self.genes["sexe"] = None
-        self.dominants["sexe"] = "Y"
+            # Si ce gêne vient d'être ajouté
+            if key not in self._dominants:
+                self._dominants[key] = choice(val)
+            # Si ce gêne a été modifié
+            elif val != self._genes_old[key]:
+                self._dominants[key] = choice(val)
 
     def __str__(self):
         rep = ''
@@ -76,10 +116,17 @@ class Espece:
             rep += f"{key.ljust(15, ' ')}\t:\t{val}\n"
         return rep
 
+    @staticmethod
+    def generate_genes():
+        genes = {}
+        for i in range(randint(2, 7)):
+            genes[donne_nom(4)] = [choice(range(1, 20)), choice(range(1, 20))]
+        return genes
+
 
 class Individu:
 
-    def __init__(self, genes: dict, espece: Espece):
+    def __init__(self, genes: dict, espece: Espece, position=None):
         self.nom = give_name().title()
         self.genes = genes
         if genes["sexe"] is None:
@@ -88,6 +135,7 @@ class Individu:
         self.apparents = self.synchronise_genes()
         self.population = Population()
         self.population.nom = "Aucune"
+        self.position = position
         self.moyenne = mean([g for g in self.apparents.values() if (isinstance(g, int) or isinstance(g, float))])
 
     def synchronise_genes(self):
