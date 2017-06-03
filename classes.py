@@ -3,6 +3,7 @@ Implémenter :
     Position de l'Individu (2d ou 3d) qui influe sur le partenaire de reproduction et l'ennemi à attaquer
     Un support optionnel du temps modifiant la probabilité de reproduction et les chances de survies
     Un gestionnaire de mutatuion aléatoire
+    Une class pour les genes (actuellement un dictionnaire)
 Améliorer l'API avec :
     Une méthode d'espèce créant un indivinu original de l'espece en question
     Un moteur sommaire prenant en compte le temps
@@ -12,7 +13,7 @@ Clarifier le code :
     Rédigeant la documentation
     Divisant en plus de fonction (tant pis pour l'optimisation)
     Commentant
-    Remplaçant les tab par des lpad()
+    Remplaçant les tab par des ljust()
 """
 from random import randint, choice
 from copy import deepcopy
@@ -56,53 +57,61 @@ def moyenne(data, approximation=3):
     return round(mean(data), approximation)
 
 
+class UnitTestPassingWhereasItShouldNot(BaseException):
+    pass
+
+
 class Espece:
+    """
+    Espece.liste_espece : -> Liste des especes instanciées (lst)
+    self.nom : -> Nom de l'instance de l'espèce (str). Sert d'identifiant
+    self.genes : -> Genes de l'espèce (dict)
+    """
 
     liste_especes = []
 
-    def __init__(self, nom=None, genes=None, sexe=True):
+    def __init__(self, nom=None, genes: dict=None, sexe=True):
 
         Espece.liste_especes.append(self)
 
         self.nom = nom if nom is not None else give_name()
 
         if genes is None:
-            self._genes = self.generate_genes()
-        elif isinstance(genes, dict):
+            self.generate_genes()
+        elif isinstance(genes, dict) and isinstance(list(genes.values())[0], list):
             self._genes = genes
         else:
-            raise TypeError
-
-        self.find_dominants()
+            raise TypeError("Le paramètre genes doit être un dictionnaire dont les valeurs sont des list.")
 
         # New feature : Rendre le sexe facultatif
         if not isinstance(sexe, bool):
             raise TypeError
         if sexe is False:
-            print("Pour l'instant les espèces sont forcément sexués.")
-            raise NotImplemented
+            raise NotImplemented("Pour l'instant les espèces sont forcément sexués.")
         else:
-            self.genes["sexe"] = None
+            self.genes["sexe"] = ['X', 'Y']
             self.dominants["sexe"] = "Y"
 
     @property
     def genes(self):
+        self.__dict__['genes'] = self._genes
         # noinspection PyAttributeOutsideInit
         # self._genes_old sert à savoir si self.gene a été modifié. Ex: self.genes['bidule'] = 'toto'
-        self._genes_old = self._genes
+        self._genes_old = deepcopy(self._genes)
         return self._genes
 
     @property
     def dominants(self):
-        # Attention à genes["existant"] = "toto"
         if self._genes != self._genes_old:
             self.find_dominants()
+        self.__dict__['dominants'] = self._dominants
         return self._dominants
 
     def find_dominants(self):
-        # noinspection PyAttributeOutsideInit
-        self._dominants = {}
-        for key, val in self.genes.items():
+        if '_dominants' not in self.__dict__:
+            # noinspection PyAttributeOutsideInit
+            self._dominants = {}
+        for key, val in self._genes.items():
             # Si ce gêne vient d'être ajouté
             if key not in self._dominants:
                 self._dominants[key] = choice(val)
@@ -116,18 +125,17 @@ class Espece:
             rep += f"{key.ljust(15, ' ')}\t:\t{val}\n"
         return rep
 
-    @staticmethod
-    def generate_genes():
-        genes = {}
+    def generate_genes(self):
+        self._genes = {}
         for i in range(randint(2, 7)):
-            genes[donne_nom(4)] = [choice(range(1, 20)), choice(range(1, 20))]
-        return genes
+            self._genes[donne_nom(4)] = [choice(range(1, 20)), choice(range(1, 20))]
+        self.find_dominants()
 
 
 class Individu:
 
-    def __init__(self, genes: dict, espece: Espece, position=None):
-        self.nom = give_name().title()
+    def __init__(self, espece: Espece, genes: dict=None):
+        self.nom = give_name()
         self.genes = genes
         if genes["sexe"] is None:
             genes["sexe"] = ['X', 'X'] if randint(0, 1) == 0 else ["X", "Y"]
@@ -135,7 +143,6 @@ class Individu:
         self.apparents = self.synchronise_genes()
         self.population = Population()
         self.population.nom = "Aucune"
-        self.position = position
         self.moyenne = mean([g for g in self.apparents.values() if (isinstance(g, int) or isinstance(g, float))])
 
     def synchronise_genes(self):
@@ -312,6 +319,33 @@ def test_new():
     print(p1.__str__(True))
 
 
+# noinspection PyUnusedLocal
+def espece_unittest():
+    try:
+        a = Espece(genes={"e": 5, "r": 8})
+        raise UnitTestPassingWhereasItShouldNot
+    except TypeError:
+        a = Espece()
+        a = Espece("Homme", {"gene1": [1, 2], 'gene2': [1, 3, 5]}, sexe=True)
+        assert a.nom == "Homme"
+        assert "sexe" in a.genes
+    print(a)
+
+
+def individu_unittest():
+    a = Espece()
+    i = Individu(a, a.genes)
+    j = Individu(a, a.genes)
+    i.set_sexe(['X', 'Y'])
+    j.set_sexe(['X', 'X'])
+    assert i.apparents["sexe"] == 'Y'
+    assert j.apparents["sexe"] == 'X'
+    k = i + j
+    print(i, j, k)
+
+
 if __name__ == '__main__':
-    test_new()
+    # test_new()
     # tester()
+    espece_unittest()
+    # individu_unittest()
